@@ -12,12 +12,14 @@ from meshtastic import (
     BROADCAST_ADDR,
 )
 
-_MAX_RESP_SIZE = 230
+_MAX_RESP_SIZE_PUBLIC = 230
+_MAX_RESP_SIZE_DM = 180 # DM can only send shorter messages
 
 def send_message(interface, message: str, destinationId: Union[int, str, None]) -> None:
     print(f"To {destinationId}: {message}")
     # FIXME: Sending to dm by setting destinationId only sends the last message.
     interface.sendText(message, destinationId=destinationId, wantAck=True)
+    time.sleep(1)
 
 def onReceive(packet, interface):
     if packet["decoded"]["portnum"] != "TEXT_MESSAGE_APP":
@@ -42,12 +44,15 @@ def onReceive(packet, interface):
     if is_public_channel and "klm" not in msg:
         return
 
+    print(f"{sender}: {msg}")
     if is_public_channel:
         msg = msg.replace("klm", "")
 
     reply_to = sender
+    reply_size = _MAX_RESP_SIZE_DM
     if is_public_channel:
         reply_to = BROADCAST_ADDR
+        reply_size = _MAX_RESP_SIZE_PUBLIC
 
     payload = {"model": "llama3.2:1b", "prompt": msg, "stream": True}
     resp = requests.post("http://localhost:11434/api/generate", data=json.dumps(payload))
@@ -61,7 +66,7 @@ def onReceive(packet, interface):
                 json_data = json.loads(decoded_line)
                 if 'response' in json_data:
 
-                    if chunk_size + len(json_data['response']) > _MAX_RESP_SIZE:
+                    if chunk_size + len(json_data['response']) > reply_size:
                         send_message(interface, "".join(words_buffer), reply_to)
                         words_buffer = []
                         chunk_size = 0
