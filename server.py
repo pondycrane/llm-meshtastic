@@ -54,7 +54,7 @@ def onReceive(packet, interface):
         reply_to = BROADCAST_ADDR
         reply_size = _MAX_RESP_SIZE_PUBLIC
 
-    payload = {"model": "llama3.2:1b", "prompt": msg, "stream": True}
+    payload = {"model": "llama3.1:8b", "prompt": msg, "stream": True}
     resp = requests.post("http://localhost:11434/api/generate", data=json.dumps(payload))
 
     words_buffer = []
